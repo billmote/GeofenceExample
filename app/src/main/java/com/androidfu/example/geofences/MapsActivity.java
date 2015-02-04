@@ -197,11 +197,24 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
      *
      * @param place
      */
-    private void moveToLocation(MyPlaces place) {
-        // Move the camera instantly to "place" with a zoom of 15.
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(place.getCoordinates(), 5));
-        // Zoom in, animating the camera.
-        mMap.animateCamera(CameraUpdateFactory.zoomTo(place.getDefaultZoomLevel()), 2000, null);
+    private void moveToLocation(final MyPlaces place) {
+        // Move the camera instantly to "place" with a zoom of 5.
+        if (place.getTitle().equals("Charleston, SC")) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(place.getCoordinates(), 5));
+        }
+
+        // Fly to our new location and then set the correct zoom level for the given place.
+        mMap.animateCamera(CameraUpdateFactory.newLatLng(place.getCoordinates()), new GoogleMap.CancelableCallback() {
+            @Override
+            public void onFinish() {
+                mMap.animateCamera(CameraUpdateFactory.zoomTo(place.getDefaultZoomLevel()), 2000, null);
+            }
+
+            @Override
+            public void onCancel() {
+                // Nothing to see here.
+            }
+        });
     }
 
     /**
