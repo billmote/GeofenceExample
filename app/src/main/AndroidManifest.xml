@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.androidfu.example.geofences">
+    package="com.androidfu.example.geofences" >
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -17,7 +17,7 @@
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme" >
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
@@ -26,19 +26,25 @@
             android:value="@string/google_maps_key" />
 
         <activity
-            android:name=".MapsActivity"
+            android:name="com.androidfu.example.geofences.MapsActivity"
             android:label="@string/app_name" />
 
         <activity-alias
-            android:name=".GeofenceExampleLauncher"
+            android:name="com.androidfu.example.geofences.GeofenceExampleLauncher"
             android:label="@string/app_name"
-            android:targetActivity=".MapsActivity">
+            android:targetActivity="com.androidfu.example.geofences.MapsActivity" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
+        <receiver
+            android:name="com.androidfu.example.geofences.GeofenceTransitionReceiver"
+            android:enabled="true"
+            android:exported="false" >
+        </receiver>
     </application>
 
 </manifest>

@@ -6,4 +6,8 @@
  
 Screenshot(s)
 =============
-![Alt Geofence Example](/Screenshot_2015-02-04-15-42-07.png?raw=true "Geofence Example Home Screen")
+![Alt Geofence Example Screenshot](/Screenshot_2015-02-05-10-06-46.png?raw=true "Geofence Example Screenshot")
+
+Videos(s)
+=============
+![Alt Geofence Example Movie](/GeofenceExample.mp4?raw=true "Geofence Example Movie")

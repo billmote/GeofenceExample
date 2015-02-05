@@ -1,10 +1,18 @@
 package com.androidfu.example.geofences;
 
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.support.v4.app.FragmentActivity;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
@@ -25,17 +33,26 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MapsActivity extends FragmentActivity implements View.OnClickListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, ResultCallback<Status> {
 
-    private GoogleMap mMap; // Might be null if Google Play services APK is not available.
+    public static final String TAG = MapsActivity.class.getSimpleName();
+
+    private static final long LOCATION_ITERATION_PAUSE_TIME = 1000;
+    private static final int NUMBER_OF_LOCATION_ITERATIONS = 10;
+
+    private GoogleMap googleMap; // Might be null if Google Play services APK is not available.
     private MyPlaces happyPlace;
     private MyPlaces home;
     private List<Geofence> myFences = new ArrayList<Geofence>();
     private GoogleApiClient googleApiClient;
     private PendingIntent geofencePendingIntent;
+    private UpdateLocationRunnable updateLocationRunnable;
+    private LocationManager locationManager;
+    private int marker = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +65,9 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
         ImageButton homeBtn = (ImageButton) findViewById(R.id.ib_home);
         homeBtn.setOnClickListener(this);
 
+        ImageButton resetBtn = (ImageButton) findViewById(R.id.ib_reset);
+        resetBtn.setOnClickListener(this);
+
         setUpMapIfNeeded();
     }
 
@@ -58,29 +78,58 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
      */
     @Override
     public void onClick(View v) {
+
+        MyPlaces place = null;
         switch (v.getId()) {
             case R.id.ib_happy_place:
                 Toast.makeText(this, "You Clicked Happy Place", Toast.LENGTH_SHORT).show();
-                moveToLocation(happyPlace);
+                place = happyPlace;
+                moveToLocation(place);
                 break;
             case R.id.ib_home:
                 Toast.makeText(this, "You Clicked Home", Toast.LENGTH_SHORT).show();
-                moveToLocation(home);
+                place = home;
+                moveToLocation(place);
                 break;
-            default:
+            case R.id.ib_reset:
+                Toast.makeText(this, "Resetting Our Map", Toast.LENGTH_SHORT).show();
+                googleApiClient.disconnect();
+                googleMap.clear();
+                myFences.clear();
+                setUpMap();
+                break;
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+
         setUpMapIfNeeded();
+
         this.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        Log.i(TAG, "Setup MOCK Location Providers");
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+        Log.i(TAG, "GPS Provider");
+        locationManager.addTestProvider(LocationManager.GPS_PROVIDER, false, true, false, false, false, false, false, Criteria.POWER_HIGH, Criteria.ACCURACY_FINE);
+        locationManager.setTestProviderEnabled(LocationManager.GPS_PROVIDER, true);
+
+        Log.i(TAG, "Network Provider");
+        locationManager.addTestProvider(LocationManager.NETWORK_PROVIDER, true, false, true, false, false, false, false, Criteria.POWER_MEDIUM, Criteria.ACCURACY_FINE);
+        locationManager.setTestProviderEnabled(LocationManager.NETWORK_PROVIDER, true);
     }
 
     @Override
     protected void onPause() {
         this.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        Log.i(TAG, "Cleanup Our Fields");
+        locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
+        locationManager.removeTestProvider(LocationManager.NETWORK_PROVIDER);
+        locationManager = null;
+
         super.onPause();
     }
 
@@ -93,7 +142,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     /**
      * Sets up the map if it is possible to do so (i.e., the Google Play services APK is correctly
      * installed) and the map has not already been instantiated.. This will ensure that we only ever
-     * call {@link #setUpMap()} once when {@link #mMap} is not null.
+     * call {@link #setUpMap()} once when {@link #googleMap} is not null.
      * <p/>
      * If it isn't installed {@link SupportMapFragment} (and
      * {@link com.google.android.gms.maps.MapView MapView}) will show a prompt for the user to
@@ -107,11 +156,11 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
      */
     private void setUpMapIfNeeded() {
         // Do a null check to confirm that we have not already instantiated the map.
-        if (mMap == null) {
+        if (googleMap == null) {
             // Try to obtain the map from the SupportMapFragment.
-            mMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
+            googleMap = ((SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map)).getMap();
             // Check if we were successful in obtaining the map.
-            if (mMap != null) {
+            if (googleMap != null) {
                 setUpMap();
             }
         }
@@ -120,10 +169,10 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     /**
      * This is where we can add markers or lines, add listeners or move the camera.
      * <p/>
-     * This should only be called once and when we are sure that {@link #mMap} is not null.
+     * This should only be called once and when we are sure that {@link #googleMap} is not null.
      */
     private void setUpMap() {
-        mMap.setBuildingsEnabled(true);
+        googleMap.setBuildingsEnabled(true);
 
         // Add a place with a Geofence
         happyPlace = new MyPlaces("Pier @ Folly Beach", "This is my Happy Place!", new LatLng(32.652411, -79.938063), 10000, 10, R.drawable.ic_palm_tree);
@@ -150,11 +199,18 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
          */
         moveToLocation(charleston);
 
-        mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+        googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                //TODO set our Mock Location to the clicked coordinates
-                Toast.makeText(getApplicationContext(), String.format("You clicked @ %1$s, %2$s", latLng.latitude, latLng.longitude), Toast.LENGTH_SHORT).show();
+
+                if (updateLocationRunnable != null && updateLocationRunnable.isAlive() && !updateLocationRunnable.isInterrupted()) {
+                    updateLocationRunnable.interrupt();
+                }
+                updateLocationRunnable = new UpdateLocationRunnable(locationManager, latLng);
+                updateLocationRunnable.start();
+
+                MyPlaces touchedPlace = new MyPlaces(String.format("Marker %1$d", ++marker), "", latLng, 65, 12, 0);
+                addPlaceMarker(touchedPlace);
             }
         });
     }
@@ -165,12 +221,16 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
      * @param place
      */
     private void addPlaceMarker(MyPlaces place) {
-        mMap.addMarker(new MarkerOptions()
-                .position(place.getCoordinates())
-                .title(place.getTitle())
-                .snippet(place.getSnippet())
-                .icon(BitmapDescriptorFactory.fromResource(place.getIconResourceId())));
-
+        MarkerOptions markerOptions = new MarkerOptions();
+        markerOptions.position(place.getCoordinates())
+                .title(place.getTitle());
+        if (!TextUtils.isEmpty(place.getSnippet())) {
+            markerOptions.snippet(place.getSnippet());
+        }
+        if (place.getIconResourceId() > 0) {
+            markerOptions.icon(BitmapDescriptorFactory.fromResource(place.getIconResourceId()));
+        }
+        googleMap.addMarker(markerOptions);
         drawGeofenceAroundTarget(place);
     }
 
@@ -189,7 +249,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
         circleOptions.fillColor(Color.argb(0x55, 0x00, 0x00, 0xff));
         circleOptions.strokeColor(Color.argb(0xaa, 0x00, 0x00, 0xff));
         circleOptions.radius(place.getFenceRadius());
-        mMap.addCircle(circleOptions);
+        googleMap.addCircle(circleOptions);
     }
 
     /**
@@ -200,14 +260,14 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     private void moveToLocation(final MyPlaces place) {
         // Move the camera instantly to "place" with a zoom of 5.
         if (place.getTitle().equals("Charleston, SC")) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(place.getCoordinates(), 5));
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(place.getCoordinates(), 5));
         }
 
         // Fly to our new location and then set the correct zoom level for the given place.
-        mMap.animateCamera(CameraUpdateFactory.newLatLng(place.getCoordinates()), new GoogleMap.CancelableCallback() {
+        googleMap.animateCamera(CameraUpdateFactory.newLatLng(place.getCoordinates()), new GoogleMap.CancelableCallback() {
             @Override
             public void onFinish() {
-                mMap.animateCamera(CameraUpdateFactory.zoomTo(place.getDefaultZoomLevel()), 2000, null);
+                googleMap.animateCamera(CameraUpdateFactory.zoomTo(place.getDefaultZoomLevel()), 2000, null);
             }
 
             @Override
@@ -269,9 +329,13 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
 
     @Override
     public void onResult(Status status) {
+        String toastMessage;
         if (status.isSuccess()) {
-            Toast.makeText(this, "We Added Our Fences", Toast.LENGTH_SHORT).show();
+            toastMessage = "Success: We Are Monitoring Our Fences";
+        } else {
+            toastMessage = "Error: We Are NOT Monitoring Our Fences";
         }
+        Toast.makeText(this, toastMessage, Toast.LENGTH_SHORT).show();
     }
 
     /**
@@ -295,9 +359,83 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
         if (geofencePendingIntent != null) {
             return geofencePendingIntent;
         } else {
-            //TODO implement our receiver rather than coming back to MapsActivity.class
-            Intent intent = new Intent(this, MapsActivity.class);
-            return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+            Intent intent = new Intent(this, GeofenceTransitionReceiver.class);
+            return PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         }
+    }
+
+
+    // /////////////////////////////////////////////////////////////////////////////////////////
+    // // UpdateLocationRunnable                                                              //
+    // /////////////////////////////////////////////////////////////////////////////////////////
+
+    class UpdateLocationRunnable extends Thread {
+
+        private final LocationManager locationManager;
+        private final LatLng latlng;
+        Location mockGpsLocation;
+        Location mockNetworkLocation;
+
+        UpdateLocationRunnable(LocationManager locationManager, LatLng latlng) {
+            this.locationManager = locationManager;
+            this.latlng = latlng;
+        }
+
+        /**
+         * Starts executing the active part of the class' code. This method is
+         * called when a thread is started that has been created with a class which
+         * implements {@code Runnable}.
+         */
+        @Override
+        public void run() {
+            try {
+                Log.i(TAG, String.format("Setting Mock Location to: %1$s, %2$s", latlng.latitude, latlng.longitude));
+                /*
+                    Location can be finicky.  Iterate over our desired location every second for
+                    NUMBER_OF_LOCATION_ITERATIONS seconds to help it figure out where we want it to
+                    be.
+                 */
+                for (int i = 0; !isInterrupted() && i <= NUMBER_OF_LOCATION_ITERATIONS; i++) {
+                    mockGpsLocation = createMockLocation(LocationManager.GPS_PROVIDER, latlng.latitude, latlng.longitude);
+                    mockNetworkLocation = createMockLocation(LocationManager.NETWORK_PROVIDER, latlng.latitude, latlng.longitude);
+                    locationManager.setTestProviderLocation(LocationManager.GPS_PROVIDER, mockGpsLocation);
+                    locationManager.setTestProviderLocation(LocationManager.NETWORK_PROVIDER, mockNetworkLocation);
+                    Thread.sleep(LOCATION_ITERATION_PAUSE_TIME);
+                }
+            } catch (InterruptedException e) {
+                Log.i(TAG, "Interrupted.");
+                // Do nothing.  We expect this to happen when location is successfully updated.
+            } finally {
+                Log.i(TAG, "Done moving location.");
+            }
+        }
+    }
+
+
+    // /////////////////////////////////////////////////////////////////////////////////////////
+    // // CreateMockLocation                                                                  //
+    // /////////////////////////////////////////////////////////////////////////////////////////
+
+    private Location createMockLocation(String locationProvider, double latitude, double longitude) {
+        Location location = new Location(locationProvider);
+        location.setLatitude(latitude);
+        location.setLongitude(longitude);
+        location.setAccuracy(1.0f);
+        location.setTime(System.currentTimeMillis());
+        /*
+            setElapsedRealtimeNanos() was added in API 17
+         */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+        }
+        try {
+            Method locationJellyBeanFixMethod = Location.class.getMethod("makeComplete");
+            if (locationJellyBeanFixMethod != null) {
+                locationJellyBeanFixMethod.invoke(location);
+            }
+        } catch (Exception e) {
+            // There's no action to take here.  This is a fix for Jelly Bean and no reason to report a failure.
+        }
+        return location;
     }
 }
