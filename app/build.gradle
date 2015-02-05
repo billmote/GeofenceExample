@@ -11,10 +11,19 @@ android {
         versionCode 1
         versionName "1.0"
     }
+
     buildTypes {
         release {
             runProguard false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.each { output ->
+            def newApkName
+            newApkName = "GeofenceExample.apk";
+            variant.outputFile = new File("${project.rootDir}", newApkName);
         }
     }
 }

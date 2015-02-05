@@ -13,3 +13,7 @@ Screenshot(s)
 Videos(s)
 =============
 [![Alt GeofenceExample Movie](http://img.youtube.com/vi/NEmApV0IaAs/0.jpg)](http://youtu.be/NEmApV0IaAs)
+
+Download(s)
+=============
+![Alt Geofence Example APK](/GeofenceExample.apk?raw=true "Geofence Example APK")
