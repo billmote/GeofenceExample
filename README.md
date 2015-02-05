@@ -4,6 +4,8 @@
 
  `<string name="google_maps_key" templateMergeStrategy="preserve">{your key goes here}</string>`
  
+_NOTE: Works best from an emulator as any other application working with location can interfere with your Mock location_
+
 Screenshot(s)
 =============
 ![Alt Geofence Example Screenshot](/Screenshot_2015-02-05-10-06-46.png?raw=true "Geofence Example Screenshot")
