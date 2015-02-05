@@ -10,4 +10,4 @@ Screenshot(s)
 
 Videos(s)
 =============
-![Alt Geofence Example Movie](/GeofenceExample.mp4?raw=true "Geofence Example Movie")
+[![Alt GeofenceExample Movie](http://img.youtube.com/vi/NEmApV0IaAs/0.jpg)](http://youtu.be/NEmApV0IaAs)
