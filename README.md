@@ -16,4 +16,4 @@ Videos(s)
 
 Download(s)
 =============
-![Alt Geofence Example APK](/GeofenceExample.apk?raw=true "Geofence Example APK")
+[GeofenceExample.apk Download](/GeofenceExample.apk?raw=true)
