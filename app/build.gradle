@@ -14,7 +14,7 @@ android {
 
     buildTypes {
         release {
-            runProguard false
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -23,7 +23,7 @@ android {
         variant.outputs.each { output ->
             def newApkName
             newApkName = "GeofenceExample.apk";
-            variant.outputFile = new File("${project.rootDir}", newApkName);
+            output.outputFile = new File("${project.rootDir}", newApkName);
         }
     }
 }

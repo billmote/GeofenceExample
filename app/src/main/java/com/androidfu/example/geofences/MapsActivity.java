@@ -125,10 +125,14 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     protected void onPause() {
         this.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        // Interrupt our runnable if we're going into the background or exiting
+        updateLocationRunnable.interrupt();
+
         Log.i(TAG, "Cleanup Our Fields");
         locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
         locationManager.removeTestProvider(LocationManager.NETWORK_PROVIDER);
         locationManager = null;
+        updateLocationRunnable = null;
 
         super.onPause();
     }
@@ -397,8 +401,8 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
                  */
                 for (int i = 0; !isInterrupted() && i <= NUMBER_OF_LOCATION_ITERATIONS; i++) {
                     mockGpsLocation = createMockLocation(LocationManager.GPS_PROVIDER, latlng.latitude, latlng.longitude);
-                    mockNetworkLocation = createMockLocation(LocationManager.NETWORK_PROVIDER, latlng.latitude, latlng.longitude);
                     locationManager.setTestProviderLocation(LocationManager.GPS_PROVIDER, mockGpsLocation);
+                    mockNetworkLocation = createMockLocation(LocationManager.NETWORK_PROVIDER, latlng.latitude, latlng.longitude);
                     locationManager.setTestProviderLocation(LocationManager.NETWORK_PROVIDER, mockNetworkLocation);
                     Thread.sleep(LOCATION_ITERATION_PAUSE_TIME);
                 }
