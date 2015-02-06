@@ -10,28 +10,46 @@
         android:layout_height="match_parent"
         tools:context=".MapsActivity" />
 
+    <TextView
+        android:id="@+id/tv_instructions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:background="@color/semi_transparent_white"
+        android:gravity="center"
+        android:paddingTop="4sp"
+        android:text="@string/label_instructions"
+        android:textColor="@android:color/black" />
+
     <ImageButton
         android:id="@+id/ib_home"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
-        android:layout_alignParentTop="true"
+        android:layout_below="@+id/tv_instructions"
+        android:contentDescription="@string/cont_desc_home_btn"
         android:src="@drawable/ic_home" />
 
     <ImageButton
         android:id="@+id/ib_happy_place"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:layout_below="@+id/ib_home"
+        android:contentDescription="@string/cont_desc_happyplace_btn"
         android:src="@drawable/ic_palm_tree" />
 
     <ImageButton
         android:id="@+id/ib_reset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:layout_below="@+id/ib_happy_place"
+        android:contentDescription="@string/cont_desc_reset_btn"
         android:src="@drawable/ic_reset" />
 
 </RelativeLayout>

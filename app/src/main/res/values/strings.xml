@@ -2,5 +2,9 @@
 <resources>
 
     <string name="app_name">Geofence Example</string>
+    <string name="label_instructions">TOUCH THE MAP TO SET YOUR MOCK LOCATION</string>
+    <string name="cont_desc_home_btn">Home Button</string>
+    <string name="cont_desc_happyplace_btn">Happy Place Button</string>
+    <string name="cont_desc_reset_btn">Reset Map Button</string>
 
 </resources>

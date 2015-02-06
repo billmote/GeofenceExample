@@ -47,7 +47,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     private GoogleMap googleMap; // Might be null if Google Play services APK is not available.
     private MyPlaces happyPlace;
     private MyPlaces home;
-    private List<Geofence> myFences = new ArrayList<Geofence>();
+    private List<Geofence> myFences = new ArrayList<>();
     private GoogleApiClient googleApiClient;
     private PendingIntent geofencePendingIntent;
     private UpdateLocationRunnable updateLocationRunnable;
@@ -79,7 +79,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     @Override
     public void onClick(View v) {
 
-        MyPlaces place = null;
+        MyPlaces place;
         switch (v.getId()) {
             case R.id.ib_happy_place:
                 Toast.makeText(this, "You Clicked Happy Place", Toast.LENGTH_SHORT).show();
@@ -126,7 +126,9 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
         this.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // Interrupt our runnable if we're going into the background or exiting
-        updateLocationRunnable.interrupt();
+        if (updateLocationRunnable != null) {
+            updateLocationRunnable.interrupt();
+        }
 
         Log.i(TAG, "Cleanup Our Fields");
         locationManager.removeTestProvider(LocationManager.GPS_PROVIDER);
@@ -222,7 +224,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     /**
      * Add a map marker at the place specified.
      *
-     * @param place
+     * @param place the place to take action on
      */
     private void addPlaceMarker(MyPlaces place) {
         MarkerOptions markerOptions = new MarkerOptions();
@@ -241,7 +243,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     /**
      * If our place has a fence radius greater than 0 then draw a circle around it.
      *
-     * @param place
+     * @param place the place to take action on
      */
     private void drawGeofenceAroundTarget(MyPlaces place) {
         if (place.getFenceRadius() <= 0) {
@@ -259,7 +261,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     /**
      * Update our map's location to the place specified.
      *
-     * @param place
+     * @param place the place to take action on
      */
     private void moveToLocation(final MyPlaces place) {
         // Move the camera instantly to "place" with a zoom of 5.
@@ -284,7 +286,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     /**
      * If our place has a fence radius > 0 then add it to our monitored fences.
      *
-     * @param place
+     * @param place the place to take action on
      */
     private void addFence(MyPlaces place) {
         if (place.getFenceRadius() <= 0) {
@@ -303,7 +305,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     /**
      * Connect our GoogleApiClient so we can begin monitoring our fences.
      *
-     * @param fences
+     * @param fences our list of Geofences to monitor
      */
     private void monitorFences(List<Geofence> fences) {
         if (fences.isEmpty()) {
