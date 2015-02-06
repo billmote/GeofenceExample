@@ -93,6 +93,9 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
                 break;
             case R.id.ib_reset:
                 Toast.makeText(this, "Resetting Our Map", Toast.LENGTH_SHORT).show();
+                if (updateLocationRunnable != null) {
+                    updateLocationRunnable.interrupt();
+                }
                 googleApiClient.disconnect();
                 googleMap.clear();
                 myFences.clear();
