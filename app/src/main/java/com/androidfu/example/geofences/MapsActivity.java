@@ -400,7 +400,8 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
             return geofencePendingIntent;
         } else {
             Intent intent = new Intent(this, GeofenceTransitionReceiver.class);
-            return PendingIntent.getBroadcast(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+            intent.setAction("geofence_transition_action");
+            return PendingIntent.getBroadcast(this, R.id.geofence_transition_intent, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         }
     }
 
@@ -439,13 +440,13 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
 
     class UpdateLocationRunnable extends Thread {
 
-        private final LocationManager locationManager;
+        private final LocationManager locMgr;
         private final LatLng latlng;
         Location mockGpsLocation;
         Location mockNetworkLocation;
 
-        UpdateLocationRunnable(LocationManager locationManager, LatLng latlng) {
-            this.locationManager = locationManager;
+        UpdateLocationRunnable(LocationManager locMgr, LatLng latlng) {
+            this.locMgr = locMgr;
             this.latlng = latlng;
         }
 
@@ -465,9 +466,9 @@ public class MapsActivity extends FragmentActivity implements GoogleApiClient.Co
                  */
                 for (int i = 0; !isInterrupted() && i <= NUMBER_OF_LOCATION_ITERATIONS; i++) {
                     mockGpsLocation = createMockLocation(LocationManager.GPS_PROVIDER, latlng.latitude, latlng.longitude);
-                    locationManager.setTestProviderLocation(LocationManager.GPS_PROVIDER, mockGpsLocation);
+                    locMgr.setTestProviderLocation(LocationManager.GPS_PROVIDER, mockGpsLocation);
                     mockNetworkLocation = createMockLocation(LocationManager.NETWORK_PROVIDER, latlng.latitude, latlng.longitude);
-                    locationManager.setTestProviderLocation(LocationManager.NETWORK_PROVIDER, mockNetworkLocation);
+                    locMgr.setTestProviderLocation(LocationManager.NETWORK_PROVIDER, mockNetworkLocation);
                     Thread.sleep(LOCATION_ITERATION_PAUSE_TIME);
                 }
             } catch (InterruptedException e) {
