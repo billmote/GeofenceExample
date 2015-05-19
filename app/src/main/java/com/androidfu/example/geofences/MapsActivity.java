@@ -37,7 +37,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MapsActivity extends FragmentActivity implements View.OnClickListener, GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, ResultCallback<Status> {
+public class MapsActivity extends FragmentActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, View.OnClickListener, ResultCallback<Status> {
 
     public static final String TAG = MapsActivity.class.getSimpleName();
 
@@ -53,6 +53,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     private UpdateLocationRunnable updateLocationRunnable;
     private LocationManager locationManager;
     private int marker = 0;
+    private Location lastLocation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -183,13 +184,23 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     private void setUpMap() {
         googleMap.setBuildingsEnabled(true);
 
+        // PRES 1
+        /*
+            1. Create a "Place" that will become a Geofence
+            2. Add a place marker on our Map
+            3. Add our place to our list of Geofences
+            4. Repeat for each place
+         */
+
         // Add a place with a Geofence
         happyPlace = new MyPlaces("Pier @ Folly Beach", "This is my Happy Place!", new LatLng(32.652411, -79.938063), 10000, 10, R.drawable.ic_palm_tree);
         addPlaceMarker(happyPlace);
         addFence(happyPlace);
 
         // Add a place with a Geofence
-        home = new MyPlaces("Home", "This is where I live.", new LatLng(39.2697455, -84.269921), 1000, 13, R.drawable.ic_home);
+        // Work 39.3336585, -84.3146718
+        // Home 39.2697455, -84.269921
+        home = new MyPlaces("Home", "This is where I live.", new LatLng(39.3336585, -84.3146718), 10000, 10, R.drawable.ic_home);
         addPlaceMarker(home);
         addFence(home);
 
@@ -202,11 +213,6 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
             After all your places have been created and markers added you can monitor your fences.
          */
         monitorFences(myFences);
-
-        /*
-            Choose one of our locations as the default and move there.
-         */
-        moveToLocation(charleston);
 
         googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
@@ -269,7 +275,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     private void moveToLocation(final MyPlaces place) {
         // Move the camera instantly to "place" with a zoom of 5.
         if (place.getTitle().equals("Charleston, SC")) {
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(place.getCoordinates(), 5));
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(place.getCoordinates(), place.getDefaultZoomLevel()));
         }
 
         // Fly to our new location and then set the correct zoom level for the given place.
@@ -298,9 +304,10 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
         }
         Geofence geofence = new Geofence.Builder()
                 .setCircularRegion(place.getCoordinates().latitude, place.getCoordinates().longitude, place.getFenceRadius())
-                .setRequestId(place.getTitle())
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT)
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .setRequestId(place.getTitle()) // every fence must have an ID
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER | Geofence.GEOFENCE_TRANSITION_EXIT) // can also have DWELL
+                .setExpirationDuration(Geofence.NEVER_EXPIRE) // how long do we care about this geofence?
+                        //.setLoiteringDelay(60000) // 1 min.
                 .build();
         myFences.add(geofence);
     }
@@ -314,13 +321,36 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
         if (fences.isEmpty()) {
             throw new RuntimeException("No fences to monitor. Call addPlaceMarker() First.");
         }
-        googleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).addConnectionCallbacks(this).addOnConnectionFailedListener(this).build();
+        // PRES 2
+        googleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(this)
+                .addOnConnectionFailedListener(this)
+                .build();
         googleApiClient.connect();
     }
 
     @Override
     public void onConnected(Bundle bundle) {
+        /*
+            TODO
+            1. Display a spinner in the progress bar while we're waiting for location
+            2. When connected & not null update map position to location
+            3. If location null try again once every 10 seconds until we get an answer or quit after x minutes
+            4. ?
+         */
         Toast.makeText(this, "GoogleApiClient Connected", Toast.LENGTH_SHORT).show();
+        lastLocation = LocationServices.FusedLocationApi.getLastLocation(googleApiClient);
+        String lastLocationMessage;
+        if (lastLocation == null) {
+            lastLocationMessage = "Last Location is NULL";
+            moveToLocation(home);
+        } else {
+            lastLocationMessage = String.format("Last Location (%1$s, %2$s)", lastLocation.getLatitude(), lastLocation.getLongitude());
+            moveToLocation(new MyPlaces("Last Location", "I am here.", new LatLng(lastLocation.getLatitude(), lastLocation.getLongitude()), 0, 13, 0));
+        }
+        Toast.makeText(this, lastLocationMessage, Toast.LENGTH_SHORT).show();
+        // PRES 3
         geofencePendingIntent = getRequestPendingIntent();
         PendingResult<Status> result = LocationServices.GeofencingApi.addGeofences(googleApiClient, myFences, geofencePendingIntent);
         result.setResultCallback(this);
@@ -339,6 +369,7 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
     @Override
     public void onResult(Status status) {
         String toastMessage;
+        // PRES 4
         if (status.isSuccess()) {
             toastMessage = "Success: We Are Monitoring Our Fences";
         } else {
@@ -376,6 +407,34 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
 
     // /////////////////////////////////////////////////////////////////////////////////////////
     // // UpdateLocationRunnable                                                              //
+    // /////////////////////////////////////////////////////////////////////////////////////////
+
+    private Location createMockLocation(String locationProvider, double latitude, double longitude) {
+        Location location = new Location(locationProvider);
+        location.setLatitude(latitude);
+        location.setLongitude(longitude);
+        location.setAccuracy(1.0f);
+        location.setTime(System.currentTimeMillis());
+        /*
+            setElapsedRealtimeNanos() was added in API 17
+         */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
+        }
+        try {
+            Method locationJellyBeanFixMethod = Location.class.getMethod("makeComplete");
+            if (locationJellyBeanFixMethod != null) {
+                locationJellyBeanFixMethod.invoke(location);
+            }
+        } catch (Exception e) {
+            // There's no action to take here.  This is a fix for Jelly Bean and no reason to report a failure.
+        }
+        return location;
+    }
+
+
+    // /////////////////////////////////////////////////////////////////////////////////////////
+    // // CreateMockLocation                                                                  //
     // /////////////////////////////////////////////////////////////////////////////////////////
 
     class UpdateLocationRunnable extends Thread {
@@ -418,33 +477,5 @@ public class MapsActivity extends FragmentActivity implements View.OnClickListen
                 Log.i(TAG, "Done moving location.");
             }
         }
-    }
-
-
-    // /////////////////////////////////////////////////////////////////////////////////////////
-    // // CreateMockLocation                                                                  //
-    // /////////////////////////////////////////////////////////////////////////////////////////
-
-    private Location createMockLocation(String locationProvider, double latitude, double longitude) {
-        Location location = new Location(locationProvider);
-        location.setLatitude(latitude);
-        location.setLongitude(longitude);
-        location.setAccuracy(1.0f);
-        location.setTime(System.currentTimeMillis());
-        /*
-            setElapsedRealtimeNanos() was added in API 17
-         */
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-            location.setElapsedRealtimeNanos(SystemClock.elapsedRealtimeNanos());
-        }
-        try {
-            Method locationJellyBeanFixMethod = Location.class.getMethod("makeComplete");
-            if (locationJellyBeanFixMethod != null) {
-                locationJellyBeanFixMethod.invoke(location);
-            }
-        } catch (Exception e) {
-            // There's no action to take here.  This is a fix for Jelly Bean and no reason to report a failure.
-        }
-        return location;
     }
 }

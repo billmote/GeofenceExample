@@ -23,7 +23,6 @@ public class MyPlaces {
     }
 
     public String getTitle() {
-
         return title;
     }
 
